@@ -40,9 +40,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['.ngrok-free.app', 'localhost', '127.0.0.1', 'shanewinter15.pythonanywhere.com']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -55,10 +55,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'users',
-    'socialmedia',
+    'lms',
     'vote',
     'widget_tweaks',
-    'webcamrecognition',
+    'biometrics',
 ]
 
 MIDDLEWARE = [
@@ -89,7 +89,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "socialmedia.context_processors.units",
+                "lms.context_processors.units",
             ],
         },
     },

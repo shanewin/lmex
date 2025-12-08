@@ -1,0 +1,9 @@
+# Web3 & Blockchain (Requires build tools, incompatible with Py3.13 due to parsimonious)
+web3
+thirdweb-sdk
+w3storage
+ipfshttpclient
+
+# Machine Learning & Vision (Requires cmake, dlib, numpy build)
+face_recognition
+opencv-python

@@ -7,7 +7,7 @@ admin.site.register(PersonalProfile)
 admin.site.register(NFT)
 
 class WalletAdmin(admin.ModelAdmin):
-    list_display = ('user', 'wallet_address', 'private_key_user')
+    list_display = ('user', 'wallet_address')
 
 admin.site.register(Wallet, WalletAdmin)
 admin.site.register(WebCamUser)

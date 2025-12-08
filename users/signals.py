@@ -27,7 +27,7 @@ def create_or_update_wallet(sender, instance, created, **kwargs):
         wallet = Wallet.objects.get(user=instance)
         # Update the wallet_address and private_key fields
         wallet.wallet_address = instance.wallet.wallet_address
-        wallet.private_key_user = instance.wallet.private_key_user
+
         wallet.save()
 
 

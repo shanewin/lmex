@@ -61,7 +61,7 @@ class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
 
     wallet_address = models.CharField(max_length=100, default='')
-    private_key_user = models.CharField(max_length=100, default='')
+
 
     def __str__(self):
         return f"Wallet for {self.user.username}"

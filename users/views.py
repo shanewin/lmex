@@ -1,15 +1,41 @@
 import os
 import secrets
 import tempfile
-import imghdr
-import ipfshttpclient
-import pilgram
+
+try:
+    import ipfshttpclient
+except ImportError:
+    ipfshttpclient = None
+
+try:
+    import pilgram
+except ImportError:
+    pilgram = None
+
+try:
+    from web3 import Web3
+except ImportError:
+    Web3 = None
+
 import PIL.Image
 import base64
 import io
-import w3storage
-import face_recognition
-from cv2 import *
+
+try:
+    import w3storage
+except ImportError:
+    w3storage = None
+
+try:
+    import face_recognition
+except ImportError:
+    face_recognition = None
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
 import segno
 import geoip2.database
 import json
@@ -39,14 +65,25 @@ from PIL import Image, ImageDraw
 from dotenv import load_dotenv
 from .models import NFT, Wallet, PersonalProfile, WebCamUser, QRScanEvent, UserFaceEncoding
 
-from thirdweb import ThirdwebSDK
-from thirdweb.types import SDKOptions, GasSettings, GasSpeed
-from eth_account import Account
-from thirdweb.types.nft import NFTMetadataInput
-from thirdweb.types import SDKOptions
+try:
+    from thirdweb import ThirdwebSDK
+    from thirdweb.types import SDKOptions, GasSettings, GasSpeed
+    from eth_account import Account
+    from thirdweb.types.nft import NFTMetadataInput
+except ImportError:
+    ThirdwebSDK = None
+    SDKOptions = None
+    GasSettings = None
+    GasSpeed = None
+    Account = None
+    NFTMetadataInput = None
 
 from users.forms import NFTMintForm
-from web3 import Web3
+
+try:
+    from web3 import Web3
+except ImportError:
+    Web3 = None
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -242,13 +279,11 @@ def apply_filter_and_preview(request):
 def upload_to_ipfs(file_path):
     WEB3_API = os.getenv('WEB3_API')
     w3 = w3storage.API(token=WEB3_API)
-    print(f"Uploading file: {file_path}")
     with open(file_path, "rb") as file:
         file_content = file.read()
     file_name = os.path.basename(file_path)
     cid = w3.post_upload((file_name, file_content))
     ipfs_uri = f'ipfs://{cid}'
-    print(f"Uploaded file to IPFS: {ipfs_uri}")
     return ipfs_uri
 
 
@@ -261,11 +296,8 @@ def mint_nft_view(request):
     # Access the environment variables
     THIRDWEB_API_KEY = os.getenv('THIRDWEB_API_KEY')
     PRIVATE_KEY = os.getenv('PRIVATE_KEY')
-    print("Environment Variables:", os.environ)
 
     # Print the values for debugging
-    print("THIRDWEB_API_KEY:", THIRDWEB_API_KEY)
-    print("PRIVATE_KEY:", PRIVATE_KEY[:10] + "..." if PRIVATE_KEY else "None")  # Print only the first 10 characters of the private key for security
 
 
     contract_address = "0x7777A79eBBd9BF1ab4afFA4c4f6fAD95d4A68191"
@@ -313,6 +345,53 @@ def mint_nft_view(request):
             priv = secrets.token_hex(32)
             # Attaching 0x prefix to our 64 character hexadecimal string stored in priv and storing the new string in variable private_key.
             private_key_user = "0x" + priv
+
+            if Account is None or ThirdwebSDK is None:
+                messages.warning(request, "Mock Mode: Web3 libraries missing. Simulating NFT mint.")
+                
+                # Mock Wallet
+                wallet_address = "0xMockAddress" + secrets.token_hex(20)
+                user = request.user
+                wallet, created = Wallet.objects.get_or_create(user=user, defaults={'wallet_address': wallet_address})
+                wallet.wallet_address = wallet_address
+                wallet.save()
+                
+                # Mock IPFS upload (skip actual upload)
+                ipfs_uri = "ipfs://QmMockHash" + secrets.token_hex(23)
+                
+                # Mock Contract & Token ID
+                contract_address = "0xMockContract" + secrets.token_hex(20)
+                token_id = secrets.randbelow(10000)
+                
+                # Mock Metadata creation
+                image_url_without_prefix = ipfs_uri.replace("ipfs://", "")
+                last_updated_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # Save NFT Model
+                nft = nft_form.save(commit=False)
+                nft.user = request.user
+                nft.image_ipfs_uri = image_url_without_prefix
+                nft.contract_address = contract_address
+                nft.token_id = token_id
+                nft.last_updated_timestamp = last_updated_timestamp
+                nft.save()
+                
+                # Set Session Data
+                request.session['name_nft'] = name_nft
+                request.session['description_nft'] = description_nft
+                request.session['image_ipfs_uri'] = ipfs_uri
+                request.session['created_by_address'] = wallet_address
+                request.session['contract_address'] = contract_address
+                request.session['token_id'] = token_id
+                request.session['last_updated_timestamp'] = last_updated_timestamp
+                request.session['token_standard'] = "ERC-721"
+                request.session['network'] = "goerli"
+                request.session['etherscan_link'] = "#"
+                request.session['opensea_link'] = "#"
+                
+                messages.success(request, f'Mock Mode: WEB3 ID NFT Successfully Minted for {request.user.username}!')
+                return redirect("mint-success")
+
             # Creating a new account using the private_key_user and storing it in variable acct
             wallet_account = Account.from_key(private_key_user)
             # Get the Ethereum wallet address from the Account instance
@@ -322,34 +401,26 @@ def mint_nft_view(request):
             user = request.user
 
             # Try to retrieve the existing Wallet for the user or create a new one with default values
-            wallet, created = Wallet.objects.get_or_create(user=user, defaults={'wallet_address': wallet_address, 'private_key_user': private_key_user})
+            wallet, created = Wallet.objects.get_or_create(user=user, defaults={'wallet_address': wallet_address})
 
             # Update the wallet_address and private_key_user regardless of whether the wallet was created or already existed
             wallet.wallet_address = wallet_address
-            wallet.private_key_user = private_key_user
+
             wallet.save()
 
 
             # Create the gas settings with your desired values
             gas_settings = GasSettings(max_price_in_gwei=5000000000000000000000000000, speed=GasSpeed.FAST)
 
-            print("Initializing SDK with THIRDWEB_API_KEY:", THIRDWEB_API_KEY) # Print SDK initialization
             # Create an instance of the ThirdwebSDK using the private key and gas settings
             sdk = ThirdwebSDK("goerli", options=SDKOptions(secret_key=THIRDWEB_API_KEY, gas_settings=gas_settings))
-            print("SDK Instance:", sdk) # Print SDK instance
-            print("SDK Configuration:", vars(sdk))
-            print("Contract Address:", contract_address)
 
             
             # Create a valid signer using your private key
             signer = Account.from_key(PRIVATE_KEY)
             sdk.update_signer(signer)
 
-            print("PRIVATE_KEY:", PRIVATE_KEY)
-            print("private_key_user:", private_key_user)
-            print("Signer:", signer)
 
-            print("Fetching contract with address:", contract_address)
             try:
                 contract = sdk.get_contract(contract_address)
             except ProtocolError:
@@ -358,7 +429,6 @@ def mint_nft_view(request):
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                print("Exception Details:", str(e))
                 messages.error(request, "An unexpected error occurred. Please contact the support team.")
                 return render(request, "users/mint_nft.html", {'nft_form': nft_form, 'initial_full_name': initial_full_name})
 
@@ -413,8 +483,7 @@ def mint_nft_view(request):
 
                 return redirect("mint-success")
         else:
-            print("Form is not valid.")
-            print("Form errors:", nft_form.errors)
+            messages.error(request, "Form validation failed. Please check your inputs.")
     
     else:
         # Retrieve the first name and last name of the user from the request object
@@ -473,7 +542,6 @@ def mint_success_view(request):
 @login_required
 def verify_view(request):
     if request.method == 'POST':
-        print("Processing POST request.")  # Log the request method
 
         # Decoding the Base64 image
         base64_img = request.POST.get('base64Image').split('base64,')[1]
@@ -483,12 +551,10 @@ def verify_view(request):
         photo = WebCamUser(user=request.user, webcam_image=image)
         photo.save()
 
-        print("Saved webcam image for user:", request.user.username)  # Log the saved image
 
         # Try to get the NFT image for this user
         try:
             verified_photo = request.user.nft.image
-            print("Using verified photo from NFT for user:", request.user.username)  # Log the NFT photo used
         except NFT.DoesNotExist:
             messages.error(request, "No NFT image found for comparison. Please contact support.")
             return render(request, 'users/verify.html')
@@ -500,12 +566,10 @@ def verify_view(request):
             uploaded_image = face_recognition.load_image_file(photo.webcam_image.path)
             uploaded_encodings = face_recognition.face_encodings(uploaded_image)
 
-            print("Number of faces detected in uploaded image:", len(uploaded_encodings))  # Log the number of detected faces
 
             verified_image = face_recognition.load_image_file(verified_photo.path)
             verified_encodings = face_recognition.face_encodings(verified_image)
 
-            print("Number of faces detected in verified image:", len(verified_encodings))  # Log the number of detected faces
 
             # Ensure that faces were detected in both images
             if not uploaded_encodings or not verified_encodings:
@@ -513,7 +577,6 @@ def verify_view(request):
 
             # Compute the face distance
             face_distances = face_recognition.face_distance([verified_encodings[0]], uploaded_encodings[0])
-            print("Face Distance:", face_distances[0])
 
             # Load images with PIL
             uploaded_pil_image = Image.open(photo.webcam_image.path)
@@ -598,7 +661,6 @@ def verify_view(request):
                 'verified_nft_image_url': verified_with_landmarks_path,
             }
 
-            print(messages.get_messages(request))
 
 
             return render(request, 'users/verify.html', context)
@@ -643,7 +705,6 @@ def save_color(request):
         color = data.get('color')
 
         # Log the received color
-        print("Saving color:", color)
 
         # Save the color in the session
         request.session['p_color'] = color
@@ -657,7 +718,6 @@ def save_color_header(request):
         colorHeader = data_head.get('colorHeader')
 
         # Log the received color
-        print("Saving font header color:", colorHeader)
 
         # Save the color in the session
         request.session['p_color_header'] = colorHeader
@@ -789,6 +849,10 @@ def send_token_to_user(user_eth_address):
     load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
     
     INFURA_ENDPOINT = os.getenv('INFURA_ENDPOINT')
+    
+    if Web3 is None:
+        return "0xMOCK_TRANSACTION_HASH_FOR_DEMO"
+
     w3 = Web3(Web3.HTTPProvider(INFURA_ENDPOINT))
 
     # Your server's Ethereum account
@@ -796,13 +860,9 @@ def send_token_to_user(user_eth_address):
     private_key = os.getenv('PRIVATE_KEY')
 
     # Print statements for debugging
-    print(f"Private Key: {private_key}")  # Ensure it prints a valid key
-    print(f"Recipient: {user_eth_address}")  # Ensure the recipient address is correct
-    print(f"Sender Address: {sender_address}")  # Check sender address too
 
     # Token details
     token_address = '0xF62D94eF1C18cB71F5D9C5cb7675c1462AD80F54'
-    print(f"Contract Address: {token_address}")  # Ensure the token address is correct
 
     with open("token_abi.json", "r") as f:
         token_abi = json.load(f)
@@ -821,7 +881,6 @@ def send_token_to_user(user_eth_address):
         'nonce': w3.eth.getTransactionCount(sender_address),
     })
 
-    print(f"Transaction: {tx}")  # Printing out the entire transaction to check its values
 
     # Sign the transaction
     signed_tx = w3.eth.account.signTransaction(tx, private_key)
@@ -854,9 +913,6 @@ def track_vcard(request):
     # Record the scan event
     ip_address = get_client_ip(request)  # Use the function we provided earlier to get the IP
     
-    print(f"Timestamp: {datetime.now(tz=timezone.utc)}")
-    print(f"IP Address: {get_client_ip(request)}")  
-    print(f"Scan from IP: {client_ip}, Location: {city}, {country}")  # Logs the IP and location to the console
 
     # After recording the scan event
     user_wallet_address = user.wallet.wallet_address  # Assuming the user has a related 'wallet' attribute with an 'wallet_address' field
@@ -864,10 +920,9 @@ def track_vcard(request):
     try:
         # Send tokens to the user
         tx_hash = send_token_to_user(user_wallet_address)
-        print(f"Token sent! Transaction hash: {tx_hash}")
     except Exception as e:
-        print(f"Error sending token: {e}")
-
+        tx_hash = None
+        messages.error(request, f"Token transfer failed: {e}")
     scan_event = QRScanEvent(
         user=user, 
         scan_timestamp=timezone.now(), 
@@ -901,10 +956,23 @@ def get_wallet_details(user_wallet_address):
     # If user_wallet_address is empty, return an empty dictionary
     if not user_wallet_address:
         return {}
-
+    
     # Load environment variables
     load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
     INFURA_ENDPOINT = os.getenv('INFURA_ENDPOINT')
+
+    if Web3 is None:
+         # Mock Mode Data
+        return {
+            'wallet_address': user_wallet_address,
+            'balance_eth': 1.5,
+            'block_number': 12345678,
+            'token_balance': 500,
+            'token_name': "MockToken",
+            'token_symbol': "MCK",
+            'nfts': [{'id': 1, 'name': 'MockNFT #1', 'description': 'A mock NFT for demo users.'}]
+        }
+
     w3 = Web3(Web3.HTTPProvider(INFURA_ENDPOINT))
 
     # Load the NFT ABI data from the file
@@ -926,8 +994,6 @@ def get_wallet_details(user_wallet_address):
     erc20_contract = w3.eth.contract(address='0xF62D94eF1C18cB71F5D9C5cb7675c1462AD80F54', abi=token_abi)
     token_name = erc20_contract.functions.name().call()
     token_symbol = erc20_contract.functions.symbol().call()
-    print(token_name)
-    print(token_symbol)
 
     user_balance = erc20_contract.functions.balanceOf(user_wallet_address).call()
 
@@ -971,18 +1037,7 @@ def qr_dashboard(request):
     # Fetch the last 10 scan events specifically for the currently logged-in user
     scan_events = QRScanEvent.objects.filter(user=request.user).order_by('-scan_timestamp')[:10]
 
-    # Print the number of fetched scan events.
-    print("Number of scan events:", len(scan_events))
 
-    # Print each scan event's details.
-    for event in scan_events:
-        print(event.user, event.scan_timestamp, event.ip_address)
-
-    # Print the executed SQL query.
-    print(scan_events.query)
-
-    # Print the user's ID.
-    print("Current user's ID:", request.user.id)
 
     return render(request, 'users/qr_dashboard.html', {'scan_events': scan_events})
 
@@ -1006,29 +1061,42 @@ def profile_home_view(request):
          # Load environment variables
     load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
     INFURA_ENDPOINT = os.getenv('INFURA_ENDPOINT')
-    web3 = Web3(Web3.HTTPProvider(INFURA_ENDPOINT))
-
-    token_address = "0xF62D94eF1C18cB71F5D9C5cb7675c1462AD80F54"
-
-    # Load the Token ABI data from the file
-    with open("token_abi.json", "r") as f:
-        token_abi = json.load(f)
-
-    token_contract = web3.eth.contract(address=token_address, abi=token_abi)
     
-    token_name = token_contract.functions.name().call()
-    symbol = token_contract.functions.symbol().call()
-    total_supply = token_contract.functions.totalSupply().call()
-    transfer_filter = token_contract.events.Transfer.createFilter(fromBlock="0x0")
-    transfers = transfer_filter.get_all_entries()
+    if Web3:
+        web3 = Web3(Web3.HTTPProvider(INFURA_ENDPOINT))
+        # Load the Token ABI data from the file
+        with open("token_abi.json", "r") as f:
+            token_abi = json.load(f)
+        token_contract = web3.eth.contract(address="0xF62D94eF1C18cB71F5D9C5cb7675c1462AD80F54", abi=token_abi)
+        try:
+            token_name = token_contract.functions.name().call()
+            symbol = token_contract.functions.symbol().call()
+            total_supply = token_contract.functions.totalSupply().call()
+            transfer_filter = token_contract.events.Transfer.createFilter(fromBlock="0x0")
+            transfers = transfer_filter.get_all_entries()
+        except:
+             token_name = "MockToken"
+             symbol = "MCK"
+             total_supply = 1000000
+             transfers = []
+    else:
+        # Mock Mode
+        token_name = "MockToken"
+        symbol = "MCK"
+        total_supply = 1000000
+        transfers = []
+        transfer_filter = None
 
 
     leaderboard_data = []
     for user in users:
-        if hasattr(user, 'wallet'):
-            wallet_details = get_wallet_details(user.wallet.wallet_address)
-            token_balance = wallet_details.get('token_balance', 0)
+        if hasattr(user, 'wallet') and Web3:
+            temp_wallet_details = get_wallet_details(user.wallet.wallet_address)
+            token_balance = temp_wallet_details.get('token_balance', 0)
             leaderboard_data.append((user, token_balance))
+        else:
+            # Mock Data
+            leaderboard_data.append((user, 100))
 
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
 
@@ -1217,6 +1285,18 @@ def erc721_contract_details(request):
 
     # Initialize web3 with Infura
     INFURA_ENDPOINT = os.getenv('INFURA_ENDPOINT')
+    
+    if Web3 is None or not INFURA_ENDPOINT:
+        messages.warning(request, "Mock Mode: Web3 missing. Simulating ERC721 Contract.")
+        context = {
+            'contract_name': 'Mock 3ID NFT',
+            'contract_symbol': '3ID',
+            'nft_details': [{'token_id': i, 'owner': f'0xMockOwner{i}', 'metadata_uri': 'ipfs://mock'} for i in range(1, 6)],
+            'transfers': [{'from': '0xZero', 'to': '0xAlice', 'token_id': 1}, {'from': '0xAlice', 'to': '0xBob', 'token_id': 2}],
+            'nft_objects': nft_objects,
+        }
+        return render(request, 'users/nft_smart_contract.html', context)
+
     w3 = Web3(Web3.HTTPProvider(INFURA_ENDPOINT))
     
     # Load the NFT ABI data from the file
@@ -1300,6 +1380,17 @@ def erc20_contract_details(request):
     CONTRACT_ADDRESS = "0xF62D94eF1C18cB71F5D9C5cb7675c1462AD80F54"
     TOKEN_ABI_PATH = "token_abi.json"
     
+    if Web3 is None or not INFURA_ENDPOINT:
+        messages.warning(request, "Mock Mode: Web3 missing. Simulating ERC20 Contract.")
+        context = {
+            'contract_name': 'Mock LMeX Token',
+            'contract_symbol': 'LMX',
+            'transfers': [{'from': '0xTreasury', 'to': '0xStudent', 'value': 100}, {'from': '0xStudent', 'to': '0xStore', 'value': 50}],
+            'total_supply': 1000000,
+            'decimals': 18,
+        }
+        return render(request, 'users/token_contract.html', context)
+
     contract = get_contract_instance(INFURA_ENDPOINT, CONTRACT_ADDRESS, TOKEN_ABI_PATH)
     details = get_contract_details(contract)
     

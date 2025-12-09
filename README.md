@@ -5,41 +5,41 @@
 
 ![Status](https://img.shields.io/badge/Status-Prototype-success) ![Stack](https://img.shields.io/badge/Stack-Django%20%7C%20Web3%20%7C%20Biometrics-blue)
 
-**LMeX** is a modernized educational platform designed to teach financial literacy through real-world "Skin in the Game." It leverages **Biometrics** for secure attendance and **Web3** for a tokenized internal economy, teaching students budgeting, saving, and debt management in real-time.
+**LMeX** is a gamified, Blockchain-based Learning Management System with specialization towards alternative K12 educational programs, such as afterschool and adult learner programs. It leverages **Biometrics** for secure attendance and **Web3** for a tokenized internal economy with NFTs and bespoke ERC-20 reward tokens to incentivize students to engage in learning activities and serve as evergreen records of student achievement. 
 
 ---
 
 ## Project Context
 
-Built as technical lead for a Web3 EdTech startup's enterprise pilot program. Deployed to 150+ students across Flint, Chicago, and NYC to validate blockchain-based learning incentives.
+Built as technical lead for a Web3 EdTech startup's enterprise pilot program. Deployed to 3 different educational programs Flint, Chicago, and Seattle with customized curriculums.
 
 **Status:** Archived pilot project (2022-2023). Code demonstrates production Django architecture, Web3 integration patterns, and complex feature development.
 
-## 📸 Functional Prototype
-*(Screenshots from Local Dev Environment - Dec 2025)*
-
-| **Student Dashboard** | **Social Leaderboard** |
+| **LMS Class Feed** | **Student Dashboard** |
 |:---:|:---:|
-| ![Profile](screenshots/profile_dashboard.png) | ![Leaderboard](screenshots/refactor_leaderboard.png) |
-| *Wallet & Identity Hub* | *Gamified Token Economy* |
+| ![LMS](screenshots/lms-student.png) | ![Profile](screenshots/profile_dashboard.png) |
+| *Instructor Moderated Message Board* | *Wallet, Identity & Leaderboard* |
+| **Biometric Verification** | **NFT Class Identity** |
+| ![Biometrics](screenshots/facial_recognition.png) | ![Mint NFT](screenshots/mint_nft.png) |
+| *Login & Attendance Verification* | *Minting NFT for Authentication* |
 
 ---
 
 ## 🛠 Modular Architecture
 
-This project was refactored from a legacy monolith into a clean, domain-driven architecture:
-
-- **`core/` (formerly `users`)**: 
+- **`users/`:** 
   - Manages Custom User Models, Auth, and Wallet integration.
-  - Generates verifiable "Web3 ID" Cards.
+  - Generates verifiable "Web3 ID" Cards (NFTs) which serve as student profile. 
   
-- **`lms/` (formerly `socialmedia`)**: 
+- **`lms/`:**
   - The "Learning Management System" engine.
+  - Class/Curriculum/Program set up with custom ERC-20 smart contract for tokenization and verifiability on the blockchain.
   - Handles Posts, Units, Replies, and the "Token Gating" logic (pay-to-view).
+  - Game mechanics for contributions with rewards from fellow students and instructors for quality class contributions. 
   
-- **`biometrics/` (formerly `webcamrecognition`)**:
-  - Handles webcam sessions and FaceID matching.
-  - *Note: Runs in "Mock Mode" if `dlib` is missing.*
+- **`biometrics/`:**
+  - Handles webcam sessions for secure login and class attendance verification.
+
 
 ---
 
@@ -96,11 +96,9 @@ If you prefer running without Docker (e.g., for rapid frontend iteration):
 
    ## Modernization (2025)
    
-   This codebase was refactored from a pilot prototype into a production-ready application:
+   This codebase was refactored for simple demonstration purposes:
    
    - **Architecture:** Restructured into domain-driven modules (core, lms, biometrics)
    - **DevOps:** Dockerized for consistent deployment
    - **Developer Experience:** Mock mode enables rapid development without ML dependencies
 
-## 📝 License
-Proprietary / Portfolio Use Only.

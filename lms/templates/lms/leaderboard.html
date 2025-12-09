@@ -58,7 +58,13 @@
         {% for user, balance in leaderboard %}
             <tr>
                 <td><strong class="rank">#{{ forloop.counter }}</strong></td> <!-- Dynamic Rank based on loop index -->
-                <td><img src="https://gateway.ipfs.io/ipfs/{{ user.nft.image_ipfs_uri }}" alt="Minted NFT Image" class="rounded-circle" width="120" height="120"></td>
+                <td>
+                    {% if user.nft.image_ipfs_uri %}
+                        <img src="https://gateway.ipfs.io/ipfs/{{ user.nft.image_ipfs_uri }}" alt="Minted NFT Image" class="rounded-circle" width="120" height="120">
+                    {% else %}
+                        <img src="{{ user.nft.image.url }}" alt="Local Mock NFT Image" class="rounded-circle" width="120" height="120">
+                    {% endif %}
+                </td>
                 <td>{{ user.personal_profile.full_name }}</td>
                 <td><a href="{% url 'user_profile' username=user.username %}">{{ user.username }}</a></td>
                 <td>${{ symbol }} : {{ balance }}</td>

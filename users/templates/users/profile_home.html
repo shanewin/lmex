@@ -26,7 +26,7 @@
           <!-- NFT Image -->
           <div class="col-md-6 d-flex align-items-start">
             <div class="nftid-card-img-container d-flex justify-content-center">
-                <img src="https://gateway.ipfs.io/ipfs/{{ request.user.nft.image_ipfs_uri }}" alt="Minted NFT Image" class="success-card-img">
+                <img src="{{ request.user.nft.image.url }}" alt="Minted NFT Image" class="success-card-img">
                 <div class="verified-banner">
                   Blockchain and AI/ML Verified Identity
               </div>

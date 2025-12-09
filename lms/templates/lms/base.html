@@ -93,7 +93,11 @@
 
               <!-- Large Circular User NFT Image -->
               <div class="text-center mb-3">
-                  <img src="https://gateway.ipfs.io/ipfs/{{ request.user.nft.image_ipfs_uri }}" alt="User NFT Image" class="rounded-circle mb-3 shadow-sm" width="140" height="140" style="object-fit: cover; border: 4px solid #e0e0e0;">
+                  {% if request.user.nft.image_ipfs_uri %}
+                    <img src="https://gateway.ipfs.io/ipfs/{{ request.user.nft.image_ipfs_uri }}" alt="User NFT Image" class="rounded-circle mb-3 shadow-sm" width="140" height="140" style="object-fit: cover; border: 4px solid #e0e0e0;">
+                  {% else %}
+                    <img src="{{ request.user.nft.image.url }}" alt="User NFT Image" class="rounded-circle mb-3 shadow-sm" width="140" height="140" style="object-fit: cover; border: 4px solid #e0e0e0;">
+                  {% endif %}
               </div>
               
               <!-- Username (link to profile), Full Name and Title -->
@@ -142,7 +146,11 @@
                           
                         <!-- NFT Image with Link to User Profile -->
                           <a href="{% url 'user_profile' username=student.username %}">
-                              <img src="https://gateway.ipfs.io/ipfs/{{ student.nft.image_ipfs_uri }}" alt="{{ student.nft.image_ipfs_uri }}" class="rounded-circle" width="85" height="85" style="object-fit: cover;">
+                              {% if student.nft.image_ipfs_uri %}
+                                <img src="https://gateway.ipfs.io/ipfs/{{ student.nft.image_ipfs_uri }}" alt="{{ student.nft.image_ipfs_uri }}" class="rounded-circle" width="85" height="85" style="object-fit: cover;">
+                              {% else %}
+                                <img src="{{ student.nft.image.url }}" alt="{{ student.username }}" class="rounded-circle" width="85" height="85" style="object-fit: cover;">
+                              {% endif %}
                           </a>
 
                           <div style="margin-left: 20px; line-height: 1.5 !important;">

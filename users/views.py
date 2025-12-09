@@ -45,6 +45,8 @@ import numpy as np
 
 
 from django.conf import settings
+import json
+import random
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -1096,7 +1098,7 @@ def profile_home_view(request):
             leaderboard_data.append((user, token_balance))
         else:
             # Mock Data
-            leaderboard_data.append((user, 100))
+            leaderboard_data.append((user, random.randint(50, 5000)))
 
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
 
